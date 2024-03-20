@@ -24,8 +24,10 @@ int main(int argc, char *argv[])
 	while (c != EOF) {
 	
 	if (c == ' ' || c == '\n') {
-		lettersPerWord[letters-1] = lettersPerWord[letters-1] + 1;
-		letters = 0;	
+		if (letters <= MAX_WORD_LENGTH) {
+			lettersPerWord[letters-1] = lettersPerWord[letters-1] + 1;
+			letters = 0;
+		}
 	}
 	else {
 		letters++;
