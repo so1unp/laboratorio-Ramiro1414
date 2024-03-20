@@ -28,6 +28,9 @@ int main(int argc, char *argv[])
 			lettersPerWord[letters-1] = lettersPerWord[letters-1] + 1;
 			letters = 0;
 		}
+		else {
+			letters = 0;
+		}
 	}
 	else {
 		letters++;
