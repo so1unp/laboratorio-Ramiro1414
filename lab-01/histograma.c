@@ -1,17 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MAX_WORD_LENGTH 5
+#define MAX_WORD_LENGTH 26
 
 int main(int argc, char *argv[])
 {
     // Agregar código aquí.
 	
-	int c, i, j, k;
+	int c, i, j, k, l, longestWord;
 	c = getchar();
 	i = 0;
 	j = 0;
 	k = 0;
+	l = 0;
+	longestWord = 0;
 	int letters;
 	letters = 0;
 	int lettersPerWord[MAX_WORD_LENGTH];
@@ -25,7 +27,7 @@ int main(int argc, char *argv[])
 	
 	if (c == ' ' || c == '\n') {
 		if (letters <= MAX_WORD_LENGTH) {
-			lettersPerWord[letters-1] = lettersPerWord[letters-1] + 1;
+			lettersPerWord[letters] = lettersPerWord[letters] + 1;
 			letters = 0;
 		}
 		else {
@@ -42,9 +44,16 @@ int main(int argc, char *argv[])
 
 	printf("\n");
 	
+	// Find longest word
+	for (l = 1; l < MAX_WORD_LENGTH; l++) {
+		if (lettersPerWord[l] != 0) {
+			longestWord = l;
+		}
+	}
+
 	// Print histogram
-	for (j = 0; j < MAX_WORD_LENGTH; j++) {
-		printf("%d ", j+1);
+	for (j = 1; j <= longestWord; j++) {
+		printf("%d ", j);
 		
 		for (k = 0; k < lettersPerWord[j]; k++) {
 		printf("*");
