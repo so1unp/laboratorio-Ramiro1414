@@ -1,0 +1,43 @@
+execve("bin/hola", ["bin/hola"], 0x7ffe90796800 /* 35 vars */) = 0
+brk(NULL)                               = 0x14fa000
+mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f335be52000
+access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or directory)
+open("/usr/local/openssl/lib/tls/x86_64/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+stat("/usr/local/openssl/lib/tls/x86_64", 0x7ffc85a38920) = -1 ENOENT (No such file or directory)
+open("/usr/local/openssl/lib/tls/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+stat("/usr/local/openssl/lib/tls", 0x7ffc85a38920) = -1 ENOENT (No such file or directory)
+open("/usr/local/openssl/lib/x86_64/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+stat("/usr/local/openssl/lib/x86_64", 0x7ffc85a38920) = -1 ENOENT (No such file or directory)
+open("/usr/local/openssl/lib/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+stat("/usr/local/openssl/lib", {st_mode=S_IFDIR|0755, st_size=151, ...}) = 0
+open("tls/x86_64/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+open("tls/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+open("x86_64/libc.so.6", O_RDONLY|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+open("libc.so.6", O_RDONLY|O_CLOEXEC)   = -1 ENOENT (No such file or directory)
+open("/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+fstat(3, {st_mode=S_IFREG|0644, st_size=62640, ...}) = 0
+mmap(NULL, 62640, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7f335be42000
+close(3)                                = 0
+open("/lib64/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0`&\2\0\0\0\0\0"..., 832) = 832
+fstat(3, {st_mode=S_IFREG|0755, st_size=2156592, ...}) = 0
+mmap(NULL, 3985920, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f335b864000
+mprotect(0x7f335ba28000, 2093056, PROT_NONE) = 0
+mmap(0x7f335bc27000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1c3000) = 0x7f335bc27000
+mmap(0x7f335bc2d000, 16896, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f335bc2d000
+close(3)                                = 0
+mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f335be41000
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f335be3f000
+arch_prctl(ARCH_SET_FS, 0x7f335be3f740) = 0
+access("/etc/sysconfig/strcasecmp-nonascii", F_OK) = -1 ENOENT (No such file or directory)
+access("/etc/sysconfig/strcasecmp-nonascii", F_OK) = -1 ENOENT (No such file or directory)
+mprotect(0x7f335bc27000, 16384, PROT_READ) = 0
+mprotect(0x600000, 4096, PROT_READ)     = 0
+mprotect(0x7f335be53000, 4096, PROT_READ) = 0
+munmap(0x7f335be42000, 62640)           = 0
+fstat(1, {st_mode=S_IFCHR|0666, st_rdev=makedev(1, 3), ...}) = 0
+ioctl(1, TCGETS, 0x7ffc85a39f90)        = -1 ENOTTY (Inappropriate ioctl for device)
+mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f335be51000
+write(1, "\302\241Hola Mundo!\n", 14)   = 14
+exit_group(0)                           = ?
++++ exited with 0 +++
