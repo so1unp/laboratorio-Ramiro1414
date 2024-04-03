@@ -86,7 +86,7 @@ runcmd(struct cmd *cmd)
     rcmd = (struct redircmd*)cmd;
 
     close(rcmd->fd); // cierro el fd que me pasan como parametro
-    open(rcmd->file, 0644); // abro el archivo con el que quiero trabajar
+    open(rcmd->file, rcmd->mode); // abro el archivo con el que quiero trabajar
 
     runcmd(rcmd->cmd);
     break;
