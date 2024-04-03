@@ -74,12 +74,20 @@ runcmd(struct cmd *cmd)
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       exit();
-    printf(2, "exec not implemented\n");
+    // printf(2, "exec not implemented\n");
+    exec(ecmd->argv[0], ecmd->argv); // argv[0] el comando para ejecutar y argv los argumentos, includio nombre del programa, es decir argv[0]
+    
+    exit();
+    // perror("error"); // antes: perror()
     break;
 
   case REDIR:
-    printf(2, "redir not implemented\n");
+    // printf(2, "redir not implemented\n");
     rcmd = (struct redircmd*)cmd;
+
+    close(rcmd->fd); // cierro el fd que me pasan como parametro
+    open(rcmd->file, 0644); // abro el archivo con el que quiero trabajar
+
     runcmd(rcmd->cmd);
     break;
 

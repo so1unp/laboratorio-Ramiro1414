@@ -57,7 +57,7 @@ void runcmd(struct cmd *cmd)
     if (cmd == 0)
 	exit(0);
 
-    switch (cmd->type) {
+    switch (cmd->type) { // cmd->type se refiere al aributo "type" de la estructura cmd
         default:
             fprintf(stderr, "unknown runcmd\n");
             exit(-1);
@@ -69,15 +69,19 @@ void runcmd(struct cmd *cmd)
             // fprintf(stderr, "exec not implemented\n");
             // Your code here ...
             // printf("entered command: %s\n", ecmd->argv[0]);
-            if ( (execvp(ecmd->argv[0], (*ecmd).argv)) == -1)
-                perror("command not found");
+            if ( execvp(ecmd->argv[0], ecmd->argv) == -1) // argv[0] el comando para ejecutar y argv los argumentos, includio nombre del programa, es decir argv[0]
+                perror("exec");
 
             break;
 
         case REDIR:
-            fprintf(stderr, "redir not implemented\n");
+            // fprintf(stderr, "redir not implemented\n");
             // Your code here ...
             rcmd = (struct redircmd *) cmd;
+
+            close(rcmd->fd); // cierro el fd que me pasan como parametro
+            open(rcmd->file, rcmd->mode, 0644); // abro el archivo con el que quiero trabajar
+
             runcmd(rcmd->cmd);
             break;
 
@@ -130,7 +134,7 @@ int main(void)
     exit(0);
 }
 
-int fork1(void)
+int fork1(void) // funcion para encapsular el manejo de errores
 {
     int pid;
 
