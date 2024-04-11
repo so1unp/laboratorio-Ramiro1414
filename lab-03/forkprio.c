@@ -5,14 +5,31 @@
 #include <signal.h>
 #include <sys/resource.h>
 
-void terminateChild(int signum) {
-    printf("SIGNAL [%d]: hijo con pid: %d y prioridad: %d\n", signum, getpid(), getpriority(PRIO_PROCESS, (id_t) getpid()));
+#define MAX_CHILDS 100
+
+int pids[MAX_CHILDS]; // arreglo que almacenara los pids de los procesos hijos
+int childs = 0;
+
+void terminateChild() {
+    struct rusage usage;
+    getrusage(RUSAGE_SELF, &usage);
+    printf("Child %d (nice %2d):\t%3li\n", getpid(), getpriority(PRIO_PROCESS, (id_t) getpid()), usage.ru_utime.tv_sec);
+    exit(0);
 }
 
-void childLoop(void) {
-    while (1) {
-        // loop infinito que no hace nada
+void doNothing() {
+    return;
+}
+
+void terminateFather() {
+    // printf("padre finaliza\n");
+    int k = 1;
+    for (k = 1; k <= childs; k++) {
+        //printf("%d\n", pids[k-1]);
+        kill(pids[k-1], SIGTERM); // termina la ejecución del hijo
     }
+    // printf("hijos finalizados");
+    exit(0);
 }
 
 int busywork(void)
@@ -34,20 +51,26 @@ int main(int argc, char *argv[])
     
     const int MAX_PRIORITY = 10;
 
-    signal(SIGTERM, terminateChild); // asigna la señal de terminacion al hijo
+    struct sigaction childHandler;
+    childHandler.sa_handler = terminateChild;
+
+    struct sigaction fatherHandler;
+    fatherHandler.sa_handler = terminateFather;
+
+    struct sigaction childHandlerDoNothing;
+    childHandlerDoNothing.sa_handler = doNothing;
 
     // argumentos
-    int childs = atoi(argv[1]); // cantidad de hijos
+    childs = atoi(argv[1]); // cantidad de hijos
     int execSeconds = atoi(argv[2]); // cantidad de segundos de ejecución
     int priorityReduction = atoi(argv[3]); // indica si se reducen las prioridades
 
     int i = 0;
     int j = 0;
     int p = getpid();
-    int pids[childs]; // arreglo que almacenara los pids de los procesos hijos
     int currentPriority = -1; // comienza en -1 porque se incrementa a 0 con el primer fork()
 
-    printf("soy el padre con pid: %d\n", p);
+    // printf("soy el padre con pid: %d\n", p);
 
     // se crean los hijos
     for (i = 1; i <= childs; i++) {
@@ -63,10 +86,11 @@ int main(int argc, char *argv[])
         }
 
         if (p == 0) {
-            printf("soy el hijo %d con pid: %d\n", i, getpid());
+            // printf("soy el hijo %d con pid: %d\n", i, getpid());
+            sigaction(SIGTERM, &childHandler, NULL); // asigna la señal de terminacion al hijo
+            sigaction(SIGINT, &childHandlerDoNothing, NULL);
             nice(currentPriority);
-            childLoop(); // pone a ejecutar una tarea al hijo
-            // break;
+            busywork(); // pone a ejecutar una tarea al hijo
         }
         
     }
@@ -74,14 +98,22 @@ int main(int argc, char *argv[])
     // finaliza la ejecución de los hijos
     if (p > 0) {
 
-        sleep( (unsigned int) execSeconds);
+    // signal(SIGINT, notifyFather);
+    sigaction(SIGINT, &fatherHandler, NULL); // asigna la señal de terminacion al hijo
 
-        printf("padre finaliza\n");
-        
-        for (j = 1; j <= childs; j++) {
-            kill(pids[j-1], SIGTERM); // termina la ejecución del hijo
+        if ( execSeconds == 0) {
+            while( pause() ) {
+                // EJECUCION INDEFINIDA
+            }
+        } else {
+            sleep( (unsigned int) execSeconds);
+
+            // printf("padre finaliza\n");
+            
+            for (j = 1; j <= childs; j++) {
+                kill(pids[j-1], SIGTERM); // termina la ejecución del hijo
+            }
         }
-        
     }
 
     exit(EXIT_SUCCESS);
