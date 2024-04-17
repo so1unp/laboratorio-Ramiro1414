@@ -8,12 +8,15 @@ void catchSignal(int);
 
 int main(void)
 {
+    struct sigaction handler;
+    handler.sa_handler = catchSignal;
+
     printf("pid: %i\n", getpid());
     
     int i = 1;
 
     for(i = 1; i < 32; i++) {
-        signal(i, catchSignal);
+        sigaction(i, &handler, NULL);
     }
 
     while( pause() ) {
