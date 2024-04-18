@@ -105,3 +105,9 @@ sys_answer(void)
 {
   return 42;
 }
+
+int
+sys_getppid(void)
+{
+  return myproc()->parent->pid;
+}
