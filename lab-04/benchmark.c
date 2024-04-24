@@ -74,12 +74,22 @@ void test_fork(int count)
 // Código para la prueba con pthread_create()
 //==========================================================================
 
+void *threadExit(void *p) {
+    pthread_exit(EXIT_SUCCESS);
+}
+
 void test_thread(int count) 
 {
     int j;
+    pthread_t thread;
     
     for (j = 0; j < count; j++) {
-        // COMPLETAR: CREAR UN HILO
-        // COMPLETAR: ESPERAR POR HILO RECIEN CREADO
+
+        if (pthread_create(&thread, NULL, threadExit, NULL) < 0) {
+            perror("thread");
+            exit(0);
+        }
+        
+        pthread_join(thread, NULL);
     }
 }
