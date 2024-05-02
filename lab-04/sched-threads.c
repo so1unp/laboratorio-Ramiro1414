@@ -94,37 +94,30 @@ int main(int argc, char *argv[]) {
 
     // Indica que al crear un hilo usando attr como parámetros, este debe
     // utilizar la política de planificación indicada en dichos parámetros.
-    // COMPLETAR: 
     pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
 
-    // Indica que la política de planificación será Round Robin.
-    // COMPLETAR: 
+    // Indica que la política de planificación será Round Robin. 
     pthread_attr_setschedpolicy(&attr, sched_policy);
 
     // Indica el nivel de prioridad que tendrá el hilo creado utilizando attr.
     param.sched_priority = 1;
-    // COMPLETAR: 
+ 
     pthread_attr_setschedparam(&attr, &param);
 
     // Indica que el hilo creado utilizando el atributo attr debe ejecutar
     // siempre en la CPU 0.
-    // COMPLETAR: usar CPU_ZERO, CPU_SET y 
     cpu_set_t cpuSet;
     CPU_ZERO (&cpuSet);
     CPU_SET (0, &cpuSet);
     pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuSet);
 
-    // hasta aca el programa anda
-
     // Crea los hilos.
-    // COMPLETAR
     i = 0;
     for (i = 0; i < count; i++) {
         pthread_create(&threads[i], &attr, write_buffer, (void *)(intptr_t) i);
     }
 
     // Espera a que terminen todos los hilos.
-    // COMPLETAR
     i = 0;
     for (i = 0; i < count; i++) {
         pthread_join(threads[i], &status);
