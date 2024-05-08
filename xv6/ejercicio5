@@ -1,0 +1,13 @@
+2. Basta con ejecutar popa para continuar con la ejecución de next_thread ya que dicha 
+instrucción de assembler desapila el contenido de una pila de un hilo 
+(valores como PC, registros de CPU, etc.), restaurando así el contexto en el cual se encontraba 
+ejecutando dicho hilo.
+3. La politica de planificación que se implementa es round robin. 
+El algoritmo es equitativo con los hilos. Además, no es apropiativo, 
+ya que el sistema operativo no interviene a la CPU para cambiar de hilo de ejecución, 
+sino que es cooperativo. Al ser cooperativos, los propios hilos ceden la CPU a otros hilos 
+(se hace con la instrucción thread_yield()).
+4. El programa ejecuta de a pares de hilos ya que una vez que encuentra uno 
+para ejecutar, al ceder la CPU, el planificador busca otro hilo en el arreglo y siempre 
+encuentra otro antes que el que ejecutaba. Luego, no va a ejecutar el mismo hilo, sino 
+que ejecuta el primero que se mencionó. Hasta que no terminen ambos hilos, no van a ejecutar otros.
