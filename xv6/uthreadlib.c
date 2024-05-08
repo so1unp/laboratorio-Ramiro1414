@@ -9,6 +9,8 @@
 #define STACK_SIZE  8192
 #define MAX_THREAD  8
 
+
+
 struct thread {
   int  sp;                /* saved stack pointer */
   char stack[STACK_SIZE]; /* the thread's stack */
@@ -37,16 +39,35 @@ thread_init(void)
   current_thread->state = RUNNING;
 }
 
+static int last_index;
 void 
 thread_schedule(void)
 {
   thread_p t;
 
   /* Find another runnable thread. */
+  /*
   next_thread = 0;
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
     if (t->state == RUNNABLE && t != current_thread) {
       next_thread = t;
+      break;
+    }
+  }
+  */
+
+  int i, indice;
+  /* Find another runnable thread. */
+  next_thread = 0;
+
+  for (i = 1; i < MAX_THREAD; i++)
+  {
+    indice = (last_index + i) % MAX_THREAD;
+    t = &all_thread[indice];
+    if (t->state == RUNNABLE && t != current_thread)
+    {
+      next_thread = t;
+      last_index = indice; // Actualiza la última posición visitada
       break;
     }
   }
@@ -56,9 +77,16 @@ thread_schedule(void)
     next_thread = current_thread;
   }
 
+/*
   if (next_thread == 0) {
     printf(2, "thread_schedule: no runnable threads\n");
     exit();
+  }
+*/
+
+  if (next_thread == 0) {
+    printf (2, "thread_schedule: no runnable threads\n");
+    next_thread = &all_thread[0]; //En vez de hacer exit, vuelve a la posicion inicial del arreglo
   }
 
   if (current_thread != next_thread) {         /* switch threads?  */
