@@ -10,6 +10,10 @@
 #include <math.h>
 #include <semaphore.h>
 
+pthread_mutex_t mutex; 
+sem_t lleno;
+sem_t vacio;
+
 static void* producer(void*);
 static void* consumer(void*);
 
@@ -33,7 +37,11 @@ static void* producer(void *p)
     struct params *params = (struct params*) p;
 
     for (i = 0; i < params->items; i++) {
+        sem_wait(&vacio); // decremento la cantidad de lugares vacios del buffer
+        pthread_mutex_lock(&mutex);
         params->buf->buf[i % params->buf->size] = i;
+        pthread_mutex_unlock(&mutex);
+        sem_post(&lleno); // incremento la cantidad de lugares llenos del buffer
         // Espera una cantidad aleatoria de microsegundos.
         usleep(rand() % params->wait_prod);
     }
@@ -52,7 +60,11 @@ static void* consumer(void *p)
     int *reader_results = (int*) malloc(sizeof(int)*params->items);
 
     for (i = 0; i < params->items; i++) {
+        sem_wait(&lleno);
+        pthread_mutex_lock(&mutex);
         reader_results[i] = params->buf->buf[i % params->buf->size];
+        pthread_mutex_unlock(&mutex);
+        sem_post(&vacio);
         // Espera una cantidad aleatoria de microsegundos.
         usleep(rand() % params->wait_prod);
     }
@@ -70,6 +82,8 @@ int main(int argc, char** argv)
 {
     pthread_t producer_t, consumer_t;
 
+    pthread_mutex_init(&mutex, NULL); // inicializa un mutex
+
     // Controla argumentos.
     if (argc != 5) {
         fprintf(stderr, "Uso: %s size items wait-prod wait-cons rand\n", argv[0]);
@@ -79,6 +93,9 @@ int main(int argc, char** argv)
         fprintf(stderr, "\twaitc:\tnúmero de microsegundos que espera el consumidor.\n");
         exit(EXIT_FAILURE);
     }
+
+    sem_init(&lleno, 0, 0); // le asigno al semaforo lleno el valor 0 (comienza vacio)
+    sem_init(&vacio, 0, *argv[1]); // le asigno al semaforo vacio el valor del tamaño del buffer.
 
     struct buffer *buf;
     buf = (struct buffer*) malloc(sizeof(struct buffer));
@@ -136,6 +153,10 @@ int main(int argc, char** argv)
     // Crea productor y consumidor
     pthread_create(&producer_t, NULL, producer, params);
     pthread_create(&consumer_t, NULL, consumer, params);
+
+    pthread_mutex_destroy(&mutex); // destruye el mutex
+    sem_destroy(&lleno);
+    sem_destroy(&vacio);
 
     // Mi trabajo ya esta hecho ...
     pthread_exit(NULL);
