@@ -1,25 +1,34 @@
-# Laboratorio 5 - Comunicación y sincronización entre procesos
+# Laboratorio 5 - Sincronizacion y comunicación
 
-## Ejercicio 1: Tuberías
+## Ejercicio 1: buffer limitado
 
-Copiar dentro del directorio de este laboratorio el archivo `sh.c` del Laboratorio 2, e implementar soporte para el uso de tuberías (_pipes_) en el mismo. El objetivo es poder ejecutar comandos como:
+El programa `buf.c` implementa un ejemplo de productor-consumidor haciendo uso de un _buffer limitado_. El programa no utiliza mecanismos de sincronización para el acceso al buffer. Esto ocasiona condiciones de carrera. Modificar el programa para sincronizar el acceso al buffer, empleando semáforos y _mutexs_.
 
-```console
-$ echo "hola" | wc
-    1   1   5
-$
-```
+Utilizar las siguientes funciones:
+* Crear un mutex: [`pthread_mutex_init()`](http://man7.org/linux/man-pages/man3/pthread_mutex_init.3p.html)
+* Inicializar un semáforo: [`sem_init()`](https://man7.org/linux/man-pages/man3/sem_init.3.html)
+* Tomar un semáforo: [`sem_wait()`](https://man7.org/linux/man-pages/man3/sem_wait.3.html)
+* Liberar un semáforo: [`sem_post()`](https://man7.org/linux/man-pages/man3/sem_post.3.html)
+* Tomar un mutex: [`pthread_mutex_lock()`](https://www.man7.org/linux/man-pages/man3/pthread_mutex_lock.3p.html)
+* Liberar un mutex: [`pthread_mutex_unlock()`](https://www.man7.org/linux/man-pages/man3/pthread_mutex_unlock.3p.html)
+* Eliminar un semáforo: [`sem_destroy()`](https://man7.org/linux/man-pages/man3/sem_destroy.3.html)
+* Eliminar un mutex: [`pthread_mutex_destroy()`](https://www.man7.org/linux/man-pages/man3/pthread_mutex_destroy.3p.html)
 
-El _parser_ del intérprete de comandos ya reconoce el operador `|` y guarda en la estructura `pipecmd` todos los datos requeridos para conectar dos procesos mediante una tubería. Deben agregar el código necesario en la función `runcmd()` en la etiqueta `PIPE` del `case`. Las llamadas al sistema que deben utilizar son:
+## Ejercicio 2: paso de mensajes
 
-* [`pipe()`](http://man7.org/linux/man-pages/man2/pipe.2.html): crea una tubería.
-* [`fork()`](http://man7.org/linux/man-pages/man2/fork.2.html): para crear un nuevo proceso.
-* [`close()`](http://man7.org/linux/man-pages/man2/close.2.html): para cerrar un descriptor de archivo.
-* [`dup2()`](http://man7.org/linux/man-pages/man2/dup.2.html): para duplicar un descriptor de archivo.
+El objetivo del ejercicio es crear un programa que permita intercambiar mensajes entre los usuarios del sistema. Para esto vamos a utilizar la librería de mensajes POSIX.
 
-## Ejercicio 2: Paso de mensajes
+El programa `msgbox.c` contiene un esqueleto del programa, que procesa los siguientes parámetros pero no hace más que imprimir un mensaje:
 
-Vamos a utilizar la librería de mensajes POSIX para desarrollar el programa `msgbox.c`, que permita intercambiar mensajes entre los usuarios del sistema. La estructura de los mensajes esta definida por `msg_t`:
+- `-s queue msg`: envía el mensaje `msg` a la cola `queue`.
+- `-r queue`: imprime el primer mensaje en `queue`.
+- `-a queue`: imprime todos los mensaje en `queue`.
+- `-l queue`: el programa espera por mensajes en `queue`.
+- `-c queue`: crea la cola de mensaje `queue`.
+- `-d queue`: elimina la cola de mensajes `queue`.
+- `-i queue`: imprime información de la cola de mensajes `queue` (máximo número de mensajes, tamaño de los mensajes, número actual de mensajes en la cola).
+
+La estructura de datos que representa un mensaje es `struct msg`, que contiene el nombre del usuario que envía el mensaje (`sender`) y el mensaje (`text`). Notar que lo que se debe enviar como mensaje es la estructura completa, no solamente el campo `text`.
 
 ```c
 #define USERNAME_SIZE   15
@@ -38,7 +47,7 @@ struct msg {
 typedef struct msg msg_t;
 ```
 
-Para crear un buzón y enviar y recibir mensajes, utilizar las siguientes funciones:
+Para crear un buzón de mensajes, enviar y recibir mensajes, usar las siguientes funciones:
 
 * [`mq_open()`](http://man7.org/linux/man-pages/man3/mq_open.3.html): crea una nueva cola de mensajes o abre una ya existente.
 * [`mq_send()`](http://man7.org/linux/man-pages/man3/mq_send.3.html): envía un mensaje a la cola de mensajes.
@@ -47,45 +56,57 @@ Para crear un buzón y enviar y recibir mensajes, utilizar las siguientes funcio
 * [`mq_unlink()`](http://man7.org/linux/man-pages/man3/mq_unlink.3.html): elimina una cola de mensajes.
 * [`getlogin_r`](https://www.man7.org/linux/man-pages/man3/getlogin.3.html): obtiene el nombre del usuario.
 
-El manual [`mq_overview`](http://man7.org/linux/man-pages/man7/mq_overview.7.html) presenta una introducción general al API de colas de mensajes.
+Una vez completado el programa, deben poder crear colas de mensajes y envíar y recibir mensajes por medio de las mismas utilizando el comando `bin/msgbox`:
 
-Una vez completado el programa, deben poder crear colas de mensajes y envíar y recibir mensajes por medio de las mismas utilizando el comando `./msgbox`.
+![Ejemplo de uso de Msg](stuff/msgbox.gif)
 
-## Ejercicio 3: Buffer limitado
+## Ejercicio 3: canvas usando memoria compartida
 
-El programa `buf.c` implementa un ejemplo de productor-consumidor haciendo uso de un _buffer limitado_. El programa no utiliza mecanismos de sincronización para el acceso al buffer. Esto puede ocasionar condiciones de carrera. Modificar el programa para sincronizar el acceso al buffer, empleando semáforos y _mutexs_. 
+Vamos a armar un _canvas_, un espacio de memoria compartida cuyo contenido puede ser modificado por distintos usuarios. Este espacio es un arreglo de 25x25 caracteres, sobre el cual se pueden escribir palabras en alguna posición. La estructura de datos que representa el _canvas_ es `canvas_t`:
 
-Utilizar las siguientes funciones:
-* Crear un mutex: [`pthread_mutex_init()`](http://man7.org/linux/man-pages/man3/pthread_mutex_init.3p.html)
-* Inicializar el semáforo: [`sem_init()`](https://man7.org/linux/man-pages/man3/sem_init.3.html)
-* Tomar un semáforo: [`sem_wait()`](https://man7.org/linux/man-pages/man3/sem_wait.3.html)
-* Liberar un semáforo: [`sem_post()`](https://man7.org/linux/man-pages/man3/sem_post.3.html)
-* Tomar un mutex: [`pthread_mutex_lock()`](https://www.man7.org/linux/man-pages/man3/pthread_mutex_lock.3p.html)
-* Liberar un mutex: [`pthread_mutex_unlock()`](https://www.man7.org/linux/man-pages/man3/pthread_mutex_unlock.3p.html)
-* Eliminar un semáforo: [`sem_destroy()`](https://man7.org/linux/man-pages/man3/sem_destroy.3.html)
-* Eliminar un mutex: [`pthread_mutex_destroy()`](https://www.man7.org/linux/man-pages/man3/pthread_mutex_destroy.3p.html)
+```c
+#define HEIGHT  25  // Altura en caracteres de la pizarra
+#define WIDTH   25  // Ancho en caracteres de la pizarra
 
-## Ejercicio 4: Buffer compartido
+struct canvas {
+    char canvas[HEIGHT*WIDTH];
+};
 
-### Parte 1
+typedef struct canvas canvas_t;
+```
 
-Completar el programa `wordheap.c` que permite generar y/o acceder una zona memoria compartida que almacena una pila de palabras. La estructura de datos que representa la pila es `wordheap`:
+Para crear y acceder al _canvas_ necesitamos utilizar memoria compartida. Para lograrlo, usaremos el API de POSIX para crear y utilizar segmentos de memoria compartida. Mediante estos segmentos, diferentes procesos pueden intercambiar datos de una manera más rapida que mediante el uso de mensajes. El manual [`shm_overview`](http://man7.org/linux/man-pages/man7/shm_overview.7.html) tiene una introducción al API de memoria compartida de POSIX.
+
+Completar el programa `canvas.c`, de manera que se puedan crear, eliminar, imprimir y modificar estos _canvas_. Las principales funciones que vamos a usar son:
+
+* [`shm_open()`](http://man7.org/linux/man-pages/man3/shm_open.3.html): crea un nuevo objeto de memoria compartida, o abre uno ya existente.
+* [`ftruncate()`](http://man7.org/linux/man-pages/man2/ftruncate.2.html): cambia ("trunca") el tamaño del segmento de memoria compartida.
+* [`mmap()`](http://man7.org/linux/man-pages/man2/mmap.2.html): mapea el segmento de memoria compartida indicado dentro del espacio de direcciones del proceso.
+* [`close()`](http://man7.org/linux/man-pages/man2/close.2.html): cierra el descriptor de un segmento de memoria compartida.
+* [`shm_unlink()`](http://man7.org/linux/man-pages/man3/shm_unlink.3.html): elimina el segmento de memoria compartida indicado.
+
+## Ejercicio 4: memoria compartida
+
+Completar el programa `wordstack.c` que permite generar y/o acceder una zona memoria compartida que almacena una pila de palabras. La estructura de datos que representa la pila es `stack`:
 
 ```c
 #define ITEMS       15
 #define MAX_WORD    50
 
-struct wordheap {
+struct wordstack {
     int free;
     int items;
     int max_word;
+    pthread_mutex_t mutex;
+    sem_t full;
+    sem_t empty;
     char heap[ITEMS][MAX_WORD];
 };
 
-typedef struct wordheap wordheap_t;
+typedef struct wordstack wordstack_t;
 ```
 
-El programa `wordheap.c` ya cuenta con el código necesario para reconocer las siguientes opciones:
+El programa `wordstack.c` ya cuenta con el código necesario para reconocer las siguientes opciones:
 
 * `-c`: Crear una nueva pila de palabras (zona de memoria compartida).
 * `-w`: Escribe una palabra en el siguiente lugar libre.
@@ -101,55 +122,12 @@ Completar el programa de manera que se puedan crear, eliminar, imprimir y modifi
 * [`close()`](http://man7.org/linux/man-pages/man2/close.2.html): cierra el descriptor de un segmento de memoria compartida.
 * [`shm_unlink()`](http://man7.org/linux/man-pages/man3/shm_unlink.3.html): elimina el segmento de memoria compartida indicado.
 
-### Parte 2
+Una vez este funcionando la pila, agregar el control de sincronización y exclusión mutua necesario para evitar condiciones de carrera cuando dos o más procesos accedan al mismo tiempo a la zona de memoria compartida:
 
-Una vez implementado el programa, agregar el control de sincronización y exclusión mutua necesario para evitar condiciones de carrera cuando dos o más procesos accedan al mismo tiempo a la zona de memoria compartida:
-
-* Solo un proceso a la vez puede modificar la pila.
-* Si la pila esta llena, `-c` se bloquea hasta que pueda escribir la palabra.
-* Si la pila esta vacía `-r` se bloquea, hasta que puede leer y remover una palabra.
-* Para que otros usuarios puedan acceder a la pila, la zona de memoria compartida debe permitir que otros usuarios la puedan modificar.
-
-## Ejercicio 5 (opcional): Criba de Erastóstenes
-
-La criba de Erastóstenes es un método para encontrar todos los números primos menores que un cierto número natural. El método puede ser simulado mediante el siguiente pseudo-código, ejecutando múltiples procesos concurrentemente comunicados mediante tuberías:
-
-```c
-p = obtener un número del proceso del lado izquierdo
-imprimir p
-loop:
-    n = obtener un número del proceso del lado izquierdo
-    if (p no divide a n):
-        enviar n al proceso del lado derecho
-```
-
-Implementar el programa en el archivo `primes.c`. Por ejemplo, para calcular los primos entre el 2 y el 11, el proceso inicial ingresa los números en la tubería. Luego, el segundo proceso elimina todos los múltiples de 2 y pasa el resto de los números al proceso siguiente. El tercer proceso elimina los múltiplos de 3, el cuarto los múltiplos de 5 y así sucesivamente:
-
-```
-               Proceso 2            Proceso 3            Proceso 4            Proceso 5            Proceso 6
-             ┌───────────┐        ┌───────────┐        ┌───────────┐        ┌───────────┐        ┌───────────┐
-    2  ──────► Imprime 2 │        │           │        │           │        │           │        │           │
-             │           │        │           │        │           │        │           │        │           │
-    3  ──────►           │ ──────►│ Imprime 3 │        │           │        │           │        │           │
-             │           │        │           │        │           │        │           │        │           │
-    4  ──────► Descarta  │        │           │        │           │        │           │        │           │
-             │           │        │           │        │           │        │           │        │           │
-    5  ──────►           │ ──────►│           │ ──────►│ Imprime 5 │        │           │        │           │
-             │           │        │           │        │           │        │           │        │           │
-    6  ──────► Descarta  │        │           │        │           │        │           │        │           │
-             │           │        │           │        │           │        │           │        │           │
-    7  ──────►           │ ──────►│           │ ──────►│           │ ──────►│ Imprime 7 │        │           │
-             │           │        │           │        │           │        │           │        │           │
-    8  ──────► Descarta  │        │           │        │           │        │           │        │           │
-             │           │        │           │        │           │        │           │        │           │
-    9  ──────►           │ ──────►│ Descarta  │        │           │        │           │        │           │
-             │           │        │           │        │           │        │           │        │           │
-   10  ──────► Descarta  │        │           │        │           │        │           │        │           │
-             │           │        │           │        │           │        │           │        │           │
-   11  ──────►           │ ──────►│           │ ──────►│           │ ──────►│           │ ──────►│ Imprime 11│
-             └───────────┘        └───────────┘        └───────────┘        └───────────┘        └───────────┘
-```
-
+* Solo un proceso a la vez puede modificar la pila (usando el `mutex`).
+* Si la pila esta llena `-c` se bloquea hasta que pueda escribir la palabra.
+* Si la pila esta vacía `-r` se bloquea hasta que puede leer y remover una palabra.
+* Para que otros usuarios puedan acceder a la pila, la zona de memoria compartida debe permitir que otros usuarios la puedan modificar y los semáforos deben permitir ser compartidos entre procesos.
 
 ---
 

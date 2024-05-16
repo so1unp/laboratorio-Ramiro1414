@@ -25,6 +25,8 @@ void usage(char *argv[])
     fprintf(stderr, "Comandos:\n");
     fprintf(stderr, "\t-s queue mensaje: escribe el mensaje en queue.\n");
     fprintf(stderr, "\t-r queue: imprime el primer mensaje en queue.\n");
+    fprintf(stderr, "\t-a queue: imprime todos los mensaje en queue.\n");
+    fprintf(stderr, "\t-l queue: vigila por mensajes en queue.\n");
     fprintf(stderr, "\t-c queue: crea una cola de mensaje queue.\n");
     fprintf(stderr, "\t-d queue: elimina la cola de mensajes queue.\n");
     fprintf(stderr, "\t-h imprime este mensaje.\n");
@@ -50,6 +52,12 @@ int main(int argc, char *argv[])
             break;
         case 'r':
             printf("Recibe el primer mensaje en %s\n", argv[2]);
+            break;
+        case 'a':
+            printf("Imprimer todos los mensajes en %s\n", argv[2]);
+            break;
+        case 'l':
+            printf("Escucha indefinidamente por mensajes\n");
             break;
         case 'c':
             printf("Crea la cola de mensajes %s\n", argv[2]);
