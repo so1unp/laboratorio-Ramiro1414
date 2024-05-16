@@ -95,7 +95,7 @@ int main(int argc, char** argv)
     }
 
     sem_init(&lleno, 0, 0); // le asigno al semaforo lleno el valor 0 (comienza vacio)
-    sem_init(&vacio, 0, *argv[1]); // le asigno al semaforo vacio el valor del tamaño del buffer.
+    
 
     struct buffer *buf;
     buf = (struct buffer*) malloc(sizeof(struct buffer));
@@ -110,6 +110,8 @@ int main(int argc, char** argv)
         fprintf(stderr, "bufsize tiene que ser mayor que cero.\n");
         exit(EXIT_FAILURE);
     }
+
+    sem_init(&vacio, 0, buf->size); // le asigno al semaforo vacio el valor del tamaño del buffer.
 
     // Crea el buffer
     buf->buf = (int*) malloc(sizeof(int) * buf->size);
