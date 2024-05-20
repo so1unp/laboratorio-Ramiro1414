@@ -9,6 +9,7 @@
 #define USERNAME_MAXSIZE    15  // Máximo tamaño en caracteres del nombre del remitente.
 #define TXT_SIZE            100 // Máximo tamaño del texto del mensaje.
 #define QUEUE_PERMISSIONS 0666
+#define MAX_MSG 10 // Maximo numero de mensajes en la cola.
 
 /**
  * Estructura del mensaje:
@@ -78,6 +79,12 @@ int main(int argc, char *argv[])
             queue = mq_open(argv[2], O_RDONLY);
             mq_getattr(queue, &attr);
 
+            // verifico si hay mensajes
+            if (attr.mq_curmsgs == 0) {
+                printf("No hay mensajes.\n");
+                exit(EXIT_SUCCESS);
+            }
+
             // Creo buffer para recibir el mensaje
             char *buffer = (char *)malloc(attr.mq_msgsize);
             if (buffer == NULL) {
@@ -96,13 +103,6 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE);
             }
 
-            if (bytesReceived == 0) {
-                printf("No hay mensajes.\n");
-                free(buffer);
-                mq_close(queue);
-                exit(EXIT_SUCCESS);
-            }
-
             memcpy(&receivedMessage, buffer, sizeof(receivedMessage));
 
             printf("%s: %s\n", receivedMessage.sender, receivedMessage.text);
@@ -113,20 +113,81 @@ int main(int argc, char *argv[])
             break;
         case 'a':
             printf("Imprimer todos los mensajes en %s\n", argv[2]);
+
+            queue = mq_open(argv[2], O_RDONLY);
+            mq_getattr(queue, &attr);
+
+            //printf("hay %d mensajes\n", (int) attr.mq_curmsgs);
+
+            if (attr.mq_curmsgs == 0) {
+                printf("No hay mensajes.\n");
+                exit(EXIT_SUCCESS);
+            }
+
+            int numberOfMessages = attr.mq_curmsgs;
+            buffer = (char *)malloc(attr.mq_msgsize);
+
+            while (numberOfMessages != 0) {
+
+                bytesReceived = mq_receive(queue, buffer, attr.mq_msgsize, NULL);
+                if (bytesReceived == -1) {
+                    fprintf(stderr, "Error al hacer mq_receive.\n");
+                    free(buffer);
+                    mq_close(queue);
+                    exit(EXIT_FAILURE);
+                }
+
+                memcpy(&receivedMessage, buffer, sizeof(receivedMessage));
+
+                printf("%s: %s\n", receivedMessage.sender, receivedMessage.text);
+
+                numberOfMessages--;
+            }
+
+            free(buffer);
+            mq_close(queue); 
+
             break;
         case 'l':
             printf("Escucha indefinidamente por mensajes\n");
+
+            queue = mq_open(argv[2], O_RDONLY);
+            mq_getattr(queue, &attr);
+            buffer = (char *)malloc(attr.mq_msgsize);
+
+            while (1) {
+
+                bytesReceived = mq_receive(queue, buffer, attr.mq_msgsize, NULL);
+                if (bytesReceived == -1) {
+                    fprintf(stderr, "Error al hacer mq_receive.\n");
+                    free(buffer);
+                    mq_close(queue);
+                    exit(EXIT_FAILURE);
+                }
+
+                memcpy(&receivedMessage, buffer, sizeof(receivedMessage));
+
+                printf("%s: %s\n", receivedMessage.sender, receivedMessage.text);
+
+            }
+
             break;
         case 'c':
             printf("Crea la cola de mensajes %s\n", argv[2]);
             
-            attr.mq_maxmsg = 10; // maximo numero de mensajes en la cola
+            attr.mq_maxmsg = MAX_MSG; // maximo numero de mensajes en la cola
             attr.mq_msgsize = USERNAME_MAXSIZE + TXT_SIZE;
 
+            queue = mq_open(argv[2], O_CREAT, QUEUE_PERMISSIONS, &attr);
+
+            /*
             if (mq_open(argv[2], O_CREAT, QUEUE_PERMISSIONS, &attr) < 0) {
                 fprintf(stderr, "Error al crear la cola de mensajes.\n");
                 exit(EXIT_FAILURE);
             }
+            */
+
+            mq_close(queue);
             
             break;
         case 'd':
