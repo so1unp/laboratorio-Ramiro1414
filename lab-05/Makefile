@@ -1,6 +1,6 @@
 CC=gcc
 BIN=./bin
-CFLAGS=-Wall -g -pthread -Werror
+CFLAGS=-Wall -g -pthread -Werror -lrt
 
 PROG=msgbox dashboard sh buf
 

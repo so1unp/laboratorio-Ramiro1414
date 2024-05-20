@@ -1,8 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>           /* For O_* constants */
+#include <sys/stat.h>        /* For mode constants */
+#include <mqueue.h>
+#include <string.h>
+#include <unistd.h>
 
 #define USERNAME_MAXSIZE    15  // Máximo tamaño en caracteres del nombre del remitente.
 #define TXT_SIZE            100 // Máximo tamaño del texto del mensaje.
+#define QUEUE_PERMISSIONS 0666
 
 /**
  * Estructura del mensaje:
@@ -48,10 +54,62 @@ int main(int argc, char *argv[])
 
     switch(option) {
         case 's':
-            printf("Enviar %s a la cola %s\n", argv[3], argv[2]);
+            printf("Enviar %s a la cola %s\n", argv[2], argv[3]);
+            
+            // recupero la cola de mensajes y sus atributos
+            mqd_t queue = mq_open(argv[3], O_RDWR);
+            struct mq_attr attr;
+            mq_getattr(queue, &attr);
+
+            // creo el mensaje
+            msg_t message;
+            getlogin_r(message.sender, sizeof(message.sender));
+            strncpy(message.text, argv[2], sizeof(message.text) - 1);
+            mq_send(queue, (char*) &message, attr.mq_msgsize, 0);
+            
+            mq_close(queue);
+
             break;
         case 'r':
             printf("Recibe el primer mensaje en %s\n", argv[2]);
+
+            msg_t receivedMessage;
+
+            queue = mq_open(argv[2], O_RDONLY);
+            mq_getattr(queue, &attr);
+
+            // Creo buffer para recibir el mensaje
+            char *buffer = (char *)malloc(attr.mq_msgsize);
+            if (buffer == NULL) {
+                fprintf(stderr, "Error al hacer malloc.\n");
+                mq_close(queue);
+                exit(EXIT_FAILURE);
+            }
+
+            // Recibo el mensaje
+            ssize_t bytesReceived;
+            bytesReceived = mq_receive(queue, buffer, attr.mq_msgsize, NULL);
+            if (bytesReceived == -1) {
+                fprintf(stderr, "Error al hacer mq_receive.\n");
+                free(buffer);
+                mq_close(queue);
+                exit(EXIT_FAILURE);
+            }
+
+            if (bytesReceived == 0) {
+                printf("No hay mensajes.\n");
+                free(buffer);
+                mq_close(queue);
+                exit(EXIT_SUCCESS);
+            }
+
+            memcpy(&receivedMessage, buffer, sizeof(receivedMessage));
+
+            printf("%s: %s\n", receivedMessage.sender, receivedMessage.text);
+
+            free(buffer);
+            mq_close(queue);
+
             break;
         case 'a':
             printf("Imprimer todos los mensajes en %s\n", argv[2]);
@@ -61,9 +119,24 @@ int main(int argc, char *argv[])
             break;
         case 'c':
             printf("Crea la cola de mensajes %s\n", argv[2]);
+            
+            attr.mq_maxmsg = 10; // maximo numero de mensajes en la cola
+            attr.mq_msgsize = USERNAME_MAXSIZE + TXT_SIZE;
+
+            if (mq_open(argv[2], O_CREAT, QUEUE_PERMISSIONS, &attr) < 0) {
+                fprintf(stderr, "Error al crear la cola de mensajes.\n");
+                exit(EXIT_FAILURE);
+            }
+            
             break;
         case 'd':
             printf("Borra la cola de mensajes %s\n", argv[2]);
+
+            if (mq_unlink(argv[2]) < 0) {
+                fprintf(stderr, "Error al eliminar la cola de mensajes.\n");
+                exit(EXIT_FAILURE);
+            }
+            
             break;
         case 'h':
             usage(argv);
