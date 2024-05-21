@@ -202,6 +202,16 @@ int main(int argc, char *argv[])
         case 'h':
             usage(argv);
             break;
+        case 'i':
+            queue = mq_open(argv[2], O_RDONLY);
+            mq_getattr(queue, &attr);
+
+            printf("Max number of messages: %d\n", (int) attr.mq_maxmsg);
+            printf("Max message size: %d\n", (int) attr.mq_msgsize);
+            printf("Current number of messages in queue: %d\n", (int) attr.mq_curmsgs);
+
+            mq_close(queue);
+            break;
         default:
             fprintf(stderr, "Comando desconocido: %s\n", argv[1]);
             exit(EXIT_FAILURE);
