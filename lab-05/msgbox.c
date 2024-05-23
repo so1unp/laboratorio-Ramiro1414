@@ -9,7 +9,7 @@
 
 #define USERNAME_MAXSIZE    15  // Máximo tamaño en caracteres del nombre del remitente.
 #define TXT_SIZE            100 // Máximo tamaño del texto del mensaje.
-#define QUEUE_PERMISSIONS 0666
+#define QUEUE_PERMISSIONS 0622
 #define MAX_MSG 10 // Maximo numero de mensajes en la cola.
 
 /**
@@ -139,6 +139,7 @@ int main(int argc, char *argv[])
             attr.mq_maxmsg = MAX_MSG; // maximo numero de mensajes en la cola
             attr.mq_msgsize = USERNAME_MAXSIZE + TXT_SIZE; // tamaño del mensaje
 
+            umask(0000);
             if ((queue = mq_open(argv[2], O_CREAT, QUEUE_PERMISSIONS, &attr)) < 0) {
                 fprintf(stderr, "Error al crear la cola de mensajes.\n");
                 exit(EXIT_FAILURE);
