@@ -8,7 +8,7 @@
 #include <string.h>
 #include <pthread.h>
 
-#define ITEMS       15
+#define ITEMS       3
 #define MAX_WORD    50
 #define SHM_PERMISSIONS 0666
 
@@ -49,14 +49,6 @@ int main(int argc, char *argv[])
     }
 
     char option = argv[1][1];
-
-    // pila de palabras y sus atributos
-    /*
-    wordstack_t stack;
-    stack.free = 0;
-    stack.items = 0;
-    stack.max_word = MAX_WORD;
-    */
     
     wordstack_t* wordstackInProcessMemory = NULL;
 
@@ -82,13 +74,6 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "Error al hacer mmap.\n");
                 exit(EXIT_FAILURE);
             } else {
-                
-                /*
-                if (wordstackInProcessMemory->items == ITEMS) {
-                    printf("Pila llena.\n");
-                    exit(EXIT_SUCCESS);
-                }
-                */
 
                 int i = 0;
                 sem_wait(&(wordstackInProcessMemory->empty));
@@ -116,28 +101,33 @@ int main(int argc, char *argv[])
             shm_fd = shm_open(argv[2], O_RDWR, SHM_PERMISSIONS);
             wordstackInProcessMemory = (wordstack_t*) mmap(NULL, sizeof(wordstack_t), PROT_WRITE | PROT_READ, MAP_SHARED, shm_fd, 0);
 
-            /*
-            if (wordstackInProcessMemory->items == 0) {
-                printf("Pila vacia.\n");
-                exit(EXIT_SUCCESS);
-            }
-            */
-
+            // posicion en la pila de la palabra que se eliminara
+            // como free apunta al lugar libre, se quiere la direccion anterior a free
             int wordIndex = (wordstackInProcessMemory->free) - 1;
+
+            // codigo para controlar el indice de la palabra que se eliminara
+            if  (wordIndex == -1) {
+                wordIndex = 0;
+            }
+
+            char word[MAX_WORD];
 
             int k = 0;
             sem_wait(&(wordstackInProcessMemory->full));
             pthread_mutex_lock(&(wordstackInProcessMemory->mutex));
             for (k = 0; k < MAX_WORD; k++) {
+                word[k] = wordstackInProcessMemory->heap[wordIndex][k];
                 wordstackInProcessMemory->heap[wordIndex][k] = ' ';
             }
+
+            word[MAX_WORD] = '\0';
 
             wordstackInProcessMemory->items--;
             wordstackInProcessMemory->free--;
             pthread_mutex_unlock(&(wordstackInProcessMemory->mutex));
             sem_post(&(wordstackInProcessMemory->empty));
 
-            printf("Palabra eliminada de la pila %s.\n", argv[2]);
+            printf("Palabra eliminada de la pila %s. La palabra era: %s\n", argv[2], word);
 
             break;
         case 'p':
@@ -197,10 +187,20 @@ int main(int argc, char *argv[])
             break;
         case 'd':
 
+            shm_fd = shm_open(argv[2], O_RDWR, SHM_PERMISSIONS);
+            wordstackInProcessMemory = (wordstack_t*) mmap(NULL, sizeof(wordstack_t), PROT_WRITE | PROT_READ, MAP_SHARED, shm_fd, 0);
+
+            sem_destroy(&(wordstackInProcessMemory->empty));
+            sem_destroy(&(wordstackInProcessMemory->full));
+            pthread_mutex_destroy(&(wordstackInProcessMemory->mutex));
+
+            close(shm_fd);
+
             if (shm_unlink(argv[2]) == -1) {
                 fprintf(stderr, "Error al eliminar el segmento de memoria compartida.\n");
                 exit(EXIT_FAILURE);
             }
+
 
             printf("Memoria compartida %s borrada con exito.\n", argv[2]);
 
