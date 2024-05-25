@@ -180,6 +180,9 @@ int main(int argc, char *argv[])
             sem_init(&(wordstackInProcessMemory->empty), 1, ITEMS);
             sem_init(&(wordstackInProcessMemory->full), 1, 0);
 
+            wordstackInProcessMemory->items = 0;
+            wordstackInProcessMemory->free = 0;
+
             printf("Memoria compartida %s creada con exito.\n", argv[2]);
 
             close(shm_fd);
