@@ -2,7 +2,7 @@ CC=gcc
 BIN=./bin
 CFLAGS=-Wall -g -pthread -Werror
 
-PROG=maps
+PROG=maps sim
 
 LIST=$(addprefix $(BIN)/, $(PROG))
 

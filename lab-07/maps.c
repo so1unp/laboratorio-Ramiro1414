@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/types.h>
+#include <strings.h>
 
 int a = 0;
 char *p;
@@ -22,6 +23,8 @@ int main(void) {
     pause();
 
     if (pid == 0) {
+        // Agregar aquí el código pedido en el ejercicio.
+
         // Esperamos la señal SIGUSR1
         pause();
     } else {
