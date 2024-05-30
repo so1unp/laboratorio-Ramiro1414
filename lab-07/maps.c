@@ -24,6 +24,10 @@ int main(void) {
 
     if (pid == 0) {
         // Agregar aquí el código pedido en el ejercicio.
+        // Codigo del hijo
+        a++;
+
+        (*p)++;
 
         // Esperamos la señal SIGUSR1
         pause();
