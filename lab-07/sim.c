@@ -7,20 +7,20 @@
 #define TAMANIO_PAGINA 4
 #define ALMACENAMIENTO_SECUNDARIO 64
 
-struct proceso {
+struct process {
     int pid;
-    int memoriaVirtual[MEMORIA_VIRTUAL / TAMANIO_PAGINA];
-    int ocupado;
+    int page_table[MEMORIA_VIRTUAL / TAMANIO_PAGINA];
+    int busy;
 };
 
-typedef struct proceso proceso_t;
+typedef struct process process_t;
 
-struct marco {
+struct frame {
     int pid;
-    int pagina;
+    int page;
 };
 
-typedef struct marco marco_t;
+typedef struct frame frame_t;
 
 int main(int argc, char* argv[])
 {
@@ -37,38 +37,72 @@ int main(int argc, char* argv[])
 
     char opcion = argv[1][1];
 
-    /* --------------------- DESCOMENTAR LUEGO ---------------------
-    int memoriaFisica[MEMORIA_FISICA / TAMANIO_PAGINA];
-    int almacenamientoSecundario[ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA];
-    */ 
-
     int pid;
     int pagina;
-    proceso_t procesos[MAX_PROCESOS];
-    marco_t marcos[MEMORIA_FISICA / TAMANIO_PAGINA]; // Memoria fisica, es una coleccion de frames (marcos)
+    int memoria = 1;
+    process_t procesos[MAX_PROCESOS];
+    frame_t memoriaFisica[MEMORIA_FISICA / TAMANIO_PAGINA]; // Memoria fisica, es una coleccion de frames (marcos)
+
+    int i = 0;
+    int j = 0;
+    int k = 0;
+
+    // inicializo el arreglo de procesos
+    for (i = 0; i < (MAX_PROCESOS); i++) {
+        procesos[i].pid = -1;
+        procesos[i].busy = 0;
+    }
+
+    // inicializo la memoria vacia
+    for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+        memoriaFisica[i].pid = -1;
+        memoriaFisica[i].page = -1;
+    }
 
     switch (opcion) {
         case 'f': 
         
-            while (pid != EOF && pagina != EOF) {
+            while (scanf("%d\n%d", &pid, &pagina) != EOF) {
 
-                // creo el proceso
-                scanf("%d", &pid);
-                proceso_t nuevoProceso;
-                nuevoProceso.pid = pid;
-                nuevoProceso.ocupado = 1;
+                if (procesos[pid-1].busy == 0 && procesos[pid-1].pid == -1) { // si no existe el proceso, creo uno nuevo
 
-                // accedo a una pagina
-                scanf("%d", &pagina);
-                nuevoProceso.memoriaVirtual[pagina-1] = pagina;
+                    // creo el proceso
+                    process_t nuevoProceso;
 
-                procesos[pid-1] = nuevoProceso;
+                    // cargo con -1 la entrada de la tabla de paginas de ese proceso
+                    for (i = 0; i < (MEMORIA_VIRTUAL / TAMANIO_PAGINA); i++) {
+                        nuevoProceso.page_table[i] = -1;
+                    }
 
-                marco_t nuevoMarco;
-                nuevoMarco.pid = pid;
-                nuevoMarco.pagina = pagina;
+                    nuevoProceso.pid = pid;
+                    nuevoProceso.busy = 1;
 
-                printf("%d.%d\n", nuevoMarco.pid, nuevoMarco.pagina);
+                    // accedo a una pagina
+                    nuevoProceso.page_table[pagina-1] = memoria;
+                
+                    // guardo al proceso en la tabla de procesos
+                    procesos[pid-1] = nuevoProceso;
+
+                    // cargo pagina en memoria fisica
+                    frame_t nuevoMarco;
+                    nuevoMarco.pid = pid;
+                    nuevoMarco.page = pagina;
+
+                    memoriaFisica[memoria-1] = nuevoMarco;
+                    memoria++;
+                } else { // si existe el proceso, agrego el acceso a pagina
+
+                    if (procesos[pid-1].page_table[pagina-1] == -1) { // verifico que el proceso no quiera acceder a la misma pagina
+                        procesos[pid-1].page_table[pagina-1] = memoria;
+
+                        frame_t nuevoMarco;
+                        nuevoMarco.pid = pid;
+                        nuevoMarco.page = pagina;
+
+                        memoriaFisica[memoria-1] = nuevoMarco;
+                        memoria++;
+                    }
+                }
             }
 
             break;
@@ -83,7 +117,36 @@ int main(int argc, char* argv[])
             exit(EXIT_FAILURE);   
     }
 
-    printf("pid: %d\n", procesos[0].pid);
-    printf("pid: %d\n", marcos[0].pid);
+    // Imprimo la tabla de paginacion de cada proceso
+    
+    for (j = 0; j < MAX_PROCESOS; j++) {
+
+        if (procesos[j].busy == 1 && procesos[j].pid != -1) {
+            printf("Proceso %d: ", procesos[j].pid);
+
+            for (k = 0; k < (MEMORIA_VIRTUAL / TAMANIO_PAGINA); k++) {
+                if (procesos[j].page_table[k] == -1) {
+                    printf("- ");
+                } else {
+                    printf("%d ", procesos[j].page_table[k]);
+                }
+            }
+            printf("\n");
+        }
+    }
+
+    // Imprimo la memoria fisica
+    j = 0;
+    printf("Memoria fisica: ");
+    for (j = 0; j < (MEMORIA_FISICA / TAMANIO_PAGINA); j++) {
+
+        if (memoriaFisica[j].pid == -1 && memoriaFisica[j].page == -1) {
+            printf("- ");
+        } else {
+            printf("%d.%d ", memoriaFisica[j].pid, memoriaFisica[j].page);
+        }
+    }
+    printf("\n");
+
     exit(EXIT_SUCCESS);
 }
