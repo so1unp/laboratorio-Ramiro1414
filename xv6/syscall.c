@@ -107,6 +107,7 @@ extern int sys_trace(void);
 extern int sys_answer(void);
 extern int sys_getppid(void);
 extern int sys_pscnt(void);
+extern int sys_pgcnt(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -133,7 +134,8 @@ static int (*syscalls[])(void) = {
 [SYS_trace]   sys_trace,
 [SYS_answer]  sys_answer,
 [SYS_getppid] sys_getppid,
-[SYS_pscnt]   sys_pscnt
+[SYS_pscnt]   sys_pscnt,
+[SYS_pgcnt]   sys_pgcnt
 };
 
 extern int trace;
@@ -164,6 +166,7 @@ static char* syscalls_names[] = {
 [SYS_answer]  "sys_answer",
 [SYS_getppid] "sys_getppid",
 [SYS_pscnt]   "sys_pscnt",
+[SYS_pgcnt]   "sys_pgcnt",
 };
 
 void

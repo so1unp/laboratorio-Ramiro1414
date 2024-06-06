@@ -27,6 +27,7 @@ int trace(int);
 int answer(void);
 int getppid(void);
 int pscnt(void);
+int pgcnt(void);
 
 // ulib.c
 int stat(const char*, struct stat*);
