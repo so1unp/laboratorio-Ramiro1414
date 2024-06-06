@@ -10,7 +10,6 @@
 struct process {
     int pid;
     int page_table[MEMORIA_VIRTUAL / TAMANIO_PAGINA];
-    int busy;
 };
 
 typedef struct process process_t;
@@ -39,9 +38,12 @@ int main(int argc, char* argv[])
 
     int pid;
     int pagina;
-    int memoria = 1;
+    int hayHueco;
+    int indiceRAM = 0;
+    int indiceDISCO = 0;
     process_t procesos[MAX_PROCESOS];
     frame_t memoriaFisica[MEMORIA_FISICA / TAMANIO_PAGINA]; // Memoria fisica, es una coleccion de frames (marcos)
+    frame_t memoriaSecundaria[ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA];
 
     int i = 0;
     int j = 0;
@@ -50,13 +52,18 @@ int main(int argc, char* argv[])
     // inicializo el arreglo de procesos
     for (i = 0; i < (MAX_PROCESOS); i++) {
         procesos[i].pid = -1;
-        procesos[i].busy = 0;
     }
 
-    // inicializo la memoria vacia
+    // inicializo la memoria fisica vacia
     for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
         memoriaFisica[i].pid = -1;
         memoriaFisica[i].page = -1;
+    }
+
+    // inicializo la memoria secundaria
+    for (i = 0; i < (ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA); i++) {
+        memoriaSecundaria[i].pid = -1;
+        memoriaSecundaria[i].page = -1;
     }
 
     switch (opcion) {
@@ -64,46 +71,70 @@ int main(int argc, char* argv[])
         
             while (scanf("%d\n%d", &pid, &pagina) != EOF) {
 
-                if (procesos[pid-1].busy == 0 && procesos[pid-1].pid == -1) { // si no existe el proceso, creo uno nuevo
+                hayHueco = 0;
 
-                    // creo el proceso
-                    process_t nuevoProceso;
+                process_t proceso;
+
+                if (procesos[pid-1].pid == -1) { // si no existe el proceso, creo uno nuevo
+                    proceso.pid = pid;
+                    proceso.page_table[pagina-1] = pagina;
 
                     // cargo con -1 la entrada de la tabla de paginas de ese proceso
                     for (i = 0; i < (MEMORIA_VIRTUAL / TAMANIO_PAGINA); i++) {
-                        nuevoProceso.page_table[i] = -1;
+                        proceso.page_table[i] = -1;
                     }
 
-                    nuevoProceso.pid = pid;
-                    nuevoProceso.busy = 1;
+                } else { // si existe, lo recupero
+                    proceso = procesos[pid-1];
+                }
+
+                // busco lugar disponible en memoria fisica
+                if(memoriaFisica[indiceRAM].pid == -1 && memoriaFisica[indiceRAM].page == -1) {
 
                     // accedo a una pagina
-                    nuevoProceso.page_table[pagina-1] = memoria;
-                
+                    proceso.page_table[pagina-1] = indiceRAM+1;
+
                     // guardo al proceso en la tabla de procesos
-                    procesos[pid-1] = nuevoProceso;
+                    procesos[pid-1] = proceso;
 
                     // cargo pagina en memoria fisica
                     frame_t nuevoMarco;
                     nuevoMarco.pid = pid;
                     nuevoMarco.page = pagina;
 
-                    memoriaFisica[memoria-1] = nuevoMarco;
-                    memoria++;
-                } else { // si existe el proceso, agrego el acceso a pagina
-
-                    if (procesos[pid-1].page_table[pagina-1] == -1) { // verifico que el proceso no quiera acceder a la misma pagina
-                        procesos[pid-1].page_table[pagina-1] = memoria;
-
-                        frame_t nuevoMarco;
-                        nuevoMarco.pid = pid;
-                        nuevoMarco.page = pagina;
-
-                        memoriaFisica[memoria-1] = nuevoMarco;
-                        memoria++;
-                    }
+                    memoriaFisica[indiceRAM] = nuevoMarco;
+                    indiceRAM = (indiceRAM + 1) % (MEMORIA_VIRTUAL / TAMANIO_PAGINA);
+                    hayHueco = 1;
                 }
-            }
+                
+                if (!hayHueco) { // si no hay lugar en la memoria fisica, hago swap                
+
+                    proceso.page_table[pagina-1] = indiceDISCO+1;
+                    procesos[pid-1] = proceso;
+
+                    // actualizo el indice de ram
+                    indiceRAM = (indiceRAM + 1) % (MEMORIA_FISICA / TAMANIO_PAGINA);
+                    
+                    // bajo a disco el proceso
+                    frame_t nuevaPaginaDisco;
+                    nuevaPaginaDisco.pid = memoriaFisica[indiceRAM-1].pid;
+                    nuevaPaginaDisco.page = memoriaFisica[indiceRAM-1].page;
+                    memoriaSecundaria[indiceDISCO] = nuevaPaginaDisco;
+
+                    // actualizo el indice de disco
+                    indiceDISCO = (indiceDISCO + 1) % (ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA);
+
+                    // meto en memoria el nuevo proceso
+                    frame_t nuevoMarco;
+                    nuevoMarco.pid = pid;
+                    nuevoMarco.page = pagina;
+
+                    memoriaFisica[indiceRAM-1] = nuevoMarco;
+
+                    hayHueco = 0;
+                }
+
+            } // end while
 
             break;
         
@@ -121,7 +152,7 @@ int main(int argc, char* argv[])
     
     for (j = 0; j < MAX_PROCESOS; j++) {
 
-        if (procesos[j].busy == 1 && procesos[j].pid != -1) {
+        if (procesos[j].pid != -1) {
             printf("Proceso %d: ", procesos[j].pid);
 
             for (k = 0; k < (MEMORIA_VIRTUAL / TAMANIO_PAGINA); k++) {
@@ -144,6 +175,19 @@ int main(int argc, char* argv[])
             printf("- ");
         } else {
             printf("%d.%d ", memoriaFisica[j].pid, memoriaFisica[j].page);
+        }
+    }
+    printf("\n");
+
+    // Imprimo la memoria secundaria
+    j = 0;
+    printf("Memoria secundaria: ");
+    for (j = 0; j < (ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA); j++) {
+
+        if (memoriaSecundaria[j].pid == -1 && memoriaSecundaria[j].page == -1) {
+            printf("- ");
+        } else {
+            printf("%d.%d ", memoriaSecundaria[j].pid, memoriaSecundaria[j].page);
         }
     }
     printf("\n");
