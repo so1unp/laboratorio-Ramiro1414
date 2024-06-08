@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #define MAX_PROCESOS 100
 #define MEMORIA_VIRTUAL 64
@@ -7,19 +8,19 @@
 #define TAMANIO_PAGINA 4
 #define ALMACENAMIENTO_SECUNDARIO 64
 
-struct process {
+struct pagina {
     int pid;
-    int page_table[MEMORIA_VIRTUAL / TAMANIO_PAGINA];
+    int pagina;
 };
 
-typedef struct process process_t;
+typedef struct pagina pagina_t;
 
-struct frame {
+struct proceso {
     int pid;
-    int page;
+    int tabla_paginas[MEMORIA_VIRTUAL / TAMANIO_PAGINA];
 };
 
-typedef struct frame frame_t;
+typedef struct proceso proceso_t;
 
 int main(int argc, char* argv[])
 {
@@ -38,16 +39,34 @@ int main(int argc, char* argv[])
 
     int pid;
     int pagina;
-    int hayHueco;
     int indiceRAM = 0;
+    int indiceRAM_LRU = 0;
     int indiceDISCO = 0;
-    process_t procesos[MAX_PROCESOS];
-    frame_t memoriaFisica[MEMORIA_FISICA / TAMANIO_PAGINA]; // Memoria fisica, es una coleccion de frames (marcos)
-    frame_t memoriaSecundaria[ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA];
+    int indicePaginaEnDisco = 0;
+    int min = 0;
+    int max = 0;
+    int indiceMin = 0;
+    int indiceProcesoPaginaEnRAM = 0;
+
+    bool procesoPaginaEnRAM = false;
+    bool procesoPaginaEnDISCO = false;
+    bool hayLugarEnRAM = false;
+
+    proceso_t procesos[MAX_PROCESOS];
+    pagina_t memoriaFisica[MEMORIA_FISICA / TAMANIO_PAGINA]; // Memoria fisica, es una coleccion de frames (marcos)
+    pagina_t memoriaSecundaria[ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA]; // Memoria secundaria, es una coleccion de paginas
+
+    int tiempo = 0;
+    int tiempoRAM[MEMORIA_FISICA / TAMANIO_PAGINA];
 
     int i = 0;
     int j = 0;
     int k = 0;
+    
+    // inicializo arreglo de tiempo para LRU
+    for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+        tiempoRAM[i] = 0;
+    }
 
     // inicializo el arreglo de procesos
     for (i = 0; i < (MAX_PROCESOS); i++) {
@@ -57,13 +76,13 @@ int main(int argc, char* argv[])
     // inicializo la memoria fisica vacia
     for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
         memoriaFisica[i].pid = -1;
-        memoriaFisica[i].page = -1;
+        memoriaFisica[i].pagina = -1;
     }
 
     // inicializo la memoria secundaria
     for (i = 0; i < (ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA); i++) {
         memoriaSecundaria[i].pid = -1;
-        memoriaSecundaria[i].page = -1;
+        memoriaSecundaria[i].pagina = -1;
     }
 
     switch (opcion) {
@@ -71,76 +90,312 @@ int main(int argc, char* argv[])
         
             while (scanf("%d\n%d", &pid, &pagina) != EOF) {
 
-                hayHueco = 0;
+                hayLugarEnRAM = false;
+                procesoPaginaEnRAM = false;
+                procesoPaginaEnDISCO = false;
+                indicePaginaEnDisco = 0;
 
-                process_t proceso;
+                proceso_t proceso;
 
-                if (procesos[pid-1].pid == -1) { // si no existe el proceso, creo uno nuevo
+                if (procesos[pid-1].pid == -1) { // si el proceso no existe, lo creo e inicializo su tabla de paginas
                     proceso.pid = pid;
-                    proceso.page_table[pagina-1] = pagina;
 
-                    // cargo con -1 la entrada de la tabla de paginas de ese proceso
                     for (i = 0; i < (MEMORIA_VIRTUAL / TAMANIO_PAGINA); i++) {
-                        proceso.page_table[i] = -1;
+                        proceso.tabla_paginas[i] = -1;
                     }
 
-                } else { // si existe, lo recupero
-                    proceso = procesos[pid-1];
+                    procesos[pid-1] = proceso;
                 }
 
-                // busco lugar disponible en memoria fisica
-                if(memoriaFisica[indiceRAM].pid == -1 && memoriaFisica[indiceRAM].page == -1) {
+                // recupero el proceso
+                proceso = procesos[pid-1];
 
-                    // accedo a una pagina
-                    proceso.page_table[pagina-1] = indiceRAM+1;
-
-                    // guardo al proceso en la tabla de procesos
-                    procesos[pid-1] = proceso;
-
-                    // cargo pagina en memoria fisica
-                    frame_t nuevoMarco;
-                    nuevoMarco.pid = pid;
-                    nuevoMarco.page = pagina;
-
-                    memoriaFisica[indiceRAM] = nuevoMarco;
-                    indiceRAM = (indiceRAM + 1) % (MEMORIA_VIRTUAL / TAMANIO_PAGINA);
-                    hayHueco = 1;
+                // pregunto si el proceso y pagina esta en memoria RAM
+                for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                    if (memoriaFisica[i].pid == pid && memoriaFisica[i].pagina == pagina) {
+                        procesoPaginaEnRAM = true;
+                        break;
+                    }
                 }
-                
-                if (!hayHueco) { // si no hay lugar en la memoria fisica, hago swap                
 
-                    proceso.page_table[pagina-1] = indiceDISCO+1;
+                // pregunto si el proceso y pagina esta en disco
+                for (i = 0; i < (ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA); i++) {
+                    if (memoriaSecundaria[i].pid == pid && memoriaSecundaria[i].pagina == pagina) {
+                        procesoPaginaEnDISCO = true;
+                        break;
+                    }
+                }
+
+                // pregunto si hay lugar en la RAM
+                for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                    if (memoriaFisica[i].pid == -1 && memoriaFisica[i].pagina == -1) {
+                        hayLugarEnRAM = true;
+                        break;
+                    }
+                }
+
+                if (procesoPaginaEnRAM == true) { // si el proceso y pagina estan en RAM, no hago nada
+                    //printf("PROCESO %d y PAGINA %d ESTAN EN RAM\n", pid, pagina);
+                    continue;
+                } 
+
+                if (procesoPaginaEnRAM == false && procesoPaginaEnDISCO == false && hayLugarEnRAM == true) {
+                    // accedo a la pagina
+                    proceso.tabla_paginas[pagina-1] = indiceRAM+1;
+
+                    pagina_t marco;
+                    marco.pid = proceso.pid;
+                    marco.pagina = pagina;
+                    memoriaFisica[indiceRAM] = marco;
+
                     procesos[pid-1] = proceso;
-
-                    // actualizo el indice de ram
                     indiceRAM = (indiceRAM + 1) % (MEMORIA_FISICA / TAMANIO_PAGINA);
-                    
-                    // bajo a disco el proceso
-                    frame_t nuevaPaginaDisco;
-                    nuevaPaginaDisco.pid = memoriaFisica[indiceRAM-1].pid;
-                    nuevaPaginaDisco.page = memoriaFisica[indiceRAM-1].page;
-                    memoriaSecundaria[indiceDISCO] = nuevaPaginaDisco;
+                }
+                        
+                if (procesoPaginaEnRAM == false && procesoPaginaEnDISCO == false && hayLugarEnRAM == false) { 
 
-                    // actualizo el indice de disco
+                    // bajo a disco el proceso pagina de RAM en 'indiceRAM' a la posicion 'indiceDISCO' del disco
+                    pagina_t paginaDisco;
+                    paginaDisco.pid = memoriaFisica[indiceRAM].pid;
+                    paginaDisco.pagina = memoriaFisica[indiceRAM].pagina;
+                    memoriaSecundaria[indiceDISCO] = paginaDisco;
                     indiceDISCO = (indiceDISCO + 1) % (ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA);
 
-                    // meto en memoria el nuevo proceso
-                    frame_t nuevoMarco;
-                    nuevoMarco.pid = pid;
-                    nuevoMarco.page = pagina;
+                    proceso.tabla_paginas[pagina-1] = indiceRAM+1;
 
-                    memoriaFisica[indiceRAM-1] = nuevoMarco;
+                    pagina_t marco;
+                    marco.pid = proceso.pid;
+                    marco.pagina = pagina;
+                    memoriaFisica[indiceRAM] = marco;
 
-                    hayHueco = 0;
+                    procesos[pid-1] = proceso;
+                    indiceRAM = (indiceRAM + 1) % (MEMORIA_FISICA / TAMANIO_PAGINA);
                 }
+                            
+                if (procesoPaginaEnRAM == false && procesoPaginaEnDISCO == true && hayLugarEnRAM == false) {
+                    
+                    for (i = 0; i < (ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA); i++) {
+                        if (memoriaSecundaria[i].pid == pid && memoriaSecundaria[i].pagina == pagina) {
+                            indicePaginaEnDisco = i;
+                            break;
+                        }
+                    }
 
-            } // end while
+                    int auxPidDisco = memoriaSecundaria[indicePaginaEnDisco].pid;
+                    int auxPaginaDisco = memoriaSecundaria[indicePaginaEnDisco].pagina;
+
+                    pagina_t paginaDisco;
+                    paginaDisco.pid = memoriaFisica[indiceRAM].pid;
+                    paginaDisco.pagina = memoriaFisica[indiceRAM].pagina;
+                    memoriaSecundaria[indicePaginaEnDisco] = paginaDisco;
+
+                    proceso.tabla_paginas[pagina-1] = indiceRAM+1;
+                    procesos[pid-1] = proceso;
+
+                    pagina_t marco;
+                    marco.pid = auxPidDisco;
+                    marco.pagina = auxPaginaDisco;
+                    memoriaFisica[indiceRAM] = marco;
+                    
+                    indiceRAM = (indiceRAM + 1) % (MEMORIA_FISICA / TAMANIO_PAGINA);
+                }
+                        
+            }
 
             break;
         
         case 'l':
 
-            // NO IMPLEMENTADO
+            while (scanf("%d\n%d", &pid, &pagina) != EOF) {
+
+                hayLugarEnRAM = false;
+                procesoPaginaEnRAM = false;
+                procesoPaginaEnDISCO = false;
+                indicePaginaEnDisco = 0;
+
+                proceso_t proceso;
+
+                if (procesos[pid-1].pid == -1) { // si el proceso no existe, lo creo e inicializo su tabla de paginas
+                    proceso.pid = pid;
+
+                    for (i = 0; i < (MEMORIA_VIRTUAL / TAMANIO_PAGINA); i++) {
+                        proceso.tabla_paginas[i] = -1;
+                    }
+
+                    procesos[pid-1] = proceso;
+                }
+
+                // recupero el proceso
+                proceso = procesos[pid-1];
+
+                // pregunto si el proceso y pagina esta en memoria RAM
+                for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                    if (memoriaFisica[i].pid == pid && memoriaFisica[i].pagina == pagina) {
+                        procesoPaginaEnRAM = true;
+                        indiceProcesoPaginaEnRAM = i;
+                        break;
+                    }
+                }
+
+                // pregunto si el proceso y pagina esta en disco
+                for (i = 0; i < (ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA); i++) {
+                    if (memoriaSecundaria[i].pid == pid && memoriaSecundaria[i].pagina == pagina) {
+                        procesoPaginaEnDISCO = true;
+                        break;
+                    }
+                }
+
+                // pregunto si hay lugar en la RAM
+                for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                    if (memoriaFisica[i].pid == -1 && memoriaFisica[i].pagina == -1) {
+                        hayLugarEnRAM = true;
+                        break;
+                    }
+                }
+
+                if (procesoPaginaEnRAM == true) { // si el proceso y pagina estan en RAM, su tiempo es max+1
+                    max = tiempoRAM[0];
+                    for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                        if (tiempoRAM[i] > max) {
+                            max = tiempoRAM[i];
+                        }
+                    }
+                    tiempoRAM[indiceProcesoPaginaEnRAM] = max+1;
+                    // AUMENTAR TIEMPO A TODOS LOS PROCESOS PAGINA ???
+                    continue;
+                } 
+
+                if (procesoPaginaEnRAM == false && procesoPaginaEnDISCO == false && hayLugarEnRAM == true) {
+
+                    for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                        if (memoriaFisica[i].pid == -1 && memoriaFisica[i].pagina == -1) {
+                            indiceRAM_LRU = i;
+                            break;
+                        }
+                    }
+
+                    // accedo a la pagina
+                    proceso.tabla_paginas[pagina-1] = indiceRAM_LRU+1;
+
+                    pagina_t marco;
+                    marco.pid = proceso.pid;
+                    marco.pagina = pagina;
+                    memoriaFisica[indiceRAM_LRU] = marco;
+                    tiempoRAM[indiceRAM_LRU] = tiempo;
+                    tiempo++;
+                    //printf("%d\n", tiempoRAM[indiceRAM_LRU]);
+
+                    procesos[pid-1] = proceso;
+                }
+                        
+                if (procesoPaginaEnRAM == false && procesoPaginaEnDISCO == false && hayLugarEnRAM == false) { 
+
+                    // busco el proceso y pagina menos recientemente usado
+                    min = tiempoRAM[0];
+                    indiceMin = 0;
+                    for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                        if (tiempoRAM[i] < min) {
+                            min = tiempoRAM[i];
+                            indiceMin = i;
+                        }
+                    }
+
+                    // busco el tiempo del proceso  y pagina mas recientemente utilizado
+                    max = tiempoRAM[0];
+                    for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                        if (tiempoRAM[i] > max) {
+                            max = tiempoRAM[i];
+                        }
+                    }
+
+                    //printf("min: %d\n", min);
+                    //printf("indiceMin:%d\n", indiceMin);
+
+                    // bajo a disco el proceso pagina
+                    pagina_t paginaDisco;
+                    paginaDisco.pid = memoriaFisica[indiceMin].pid;
+                    paginaDisco.pagina = memoriaFisica[indiceMin].pagina;
+                    memoriaSecundaria[indiceDISCO] = paginaDisco;
+                    indiceDISCO = (indiceDISCO + 1) % (ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA);
+
+                    proceso.tabla_paginas[pagina-1] = indiceMin+1;
+
+                    tiempoRAM[indiceMin] = max+1;
+
+                    pagina_t marco;
+                    marco.pid = proceso.pid;
+                    marco.pagina = pagina;
+                    memoriaFisica[indiceMin] = marco;
+
+                    // incremento el tiempo de todos los procesos en 1
+                    for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                        tiempoRAM[i] = tiempoRAM[i] + 1;
+                        //printf("%d\n", tiempoRAM[i]);
+                    }
+
+                    procesos[pid-1] = proceso;
+                    
+                }
+                            
+                if (procesoPaginaEnRAM == false && procesoPaginaEnDISCO == true && hayLugarEnRAM == false) {
+                    for (i = 0; i < (ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA); i++) {
+                        if (memoriaSecundaria[i].pid == pid && memoriaSecundaria[i].pagina == pagina) {
+                            indicePaginaEnDisco = i;
+                            //printf("%d.%d indice: %d\n", memoriaSecundaria[i].pid, memoriaSecundaria[i].pagina, indicePaginaEnDisco);
+                            break;
+                        }
+                    }
+                    
+
+                    int auxPidDisco = memoriaSecundaria[indicePaginaEnDisco].pid;
+                    int auxPaginaDisco = memoriaSecundaria[indicePaginaEnDisco].pagina;
+                    //printf("aux %d.%d\n", auxPidDisco, auxPaginaDisco);
+
+                    min = tiempoRAM[0];
+                    indiceMin = 0;
+                    for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                        //printf("%d\n", tiempoRAM[i]);
+                        if (tiempoRAM[i] < min) {
+                            min = tiempoRAM[i];
+                            indiceMin = i;
+                        }
+                    }
+
+                    //printf("indiceMin:%d\n", indiceMin);
+
+                    pagina_t paginaDisco;
+                    paginaDisco.pid = memoriaFisica[indiceMin].pid;
+                    paginaDisco.pagina = memoriaFisica[indiceMin].pagina;
+                    //printf("pagina disco %d.%d\n", memoriaFisica[indiceMin].pid, memoriaFisica[indiceMin].pagina);
+                    memoriaSecundaria[indicePaginaEnDisco] = paginaDisco;
+
+                    proceso.tabla_paginas[pagina-1] = indiceMin+1;
+                    procesos[pid-1] = proceso;
+
+                    pagina_t marco;
+                    marco.pid = auxPidDisco;
+                    marco.pagina = auxPaginaDisco;
+                    memoriaFisica[indiceMin] = marco;
+
+                    // busco el tiempo del proceso  y pagina mas recientemente utilizado
+                    max = tiempoRAM[0];
+                    for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                        if (tiempoRAM[i] > max) {
+                            max = tiempoRAM[i];
+                        }
+                    }
+
+                    tiempoRAM[indiceMin] = max+1;
+
+                    // incremento el tiempo de todos los procesos en 1
+                    for (i = 0; i < (MEMORIA_FISICA / TAMANIO_PAGINA); i++) {
+                        //printf("post swap: %d\n", tiempoRAM[i]);
+                        tiempoRAM[i] = tiempoRAM[i] + 1;
+                    }
+                    
+                }
+                        
+            }
 
             break;
         default:
@@ -149,17 +404,16 @@ int main(int argc, char* argv[])
     }
 
     // Imprimo la tabla de paginacion de cada proceso
-    
     for (j = 0; j < MAX_PROCESOS; j++) {
 
         if (procesos[j].pid != -1) {
             printf("Proceso %d: ", procesos[j].pid);
 
             for (k = 0; k < (MEMORIA_VIRTUAL / TAMANIO_PAGINA); k++) {
-                if (procesos[j].page_table[k] == -1) {
+                if (procesos[j].tabla_paginas[k] == -1) {
                     printf("- ");
                 } else {
-                    printf("%d ", procesos[j].page_table[k]);
+                    printf("%d ", procesos[j].tabla_paginas[k]);
                 }
             }
             printf("\n");
@@ -171,10 +425,10 @@ int main(int argc, char* argv[])
     printf("Memoria fisica: ");
     for (j = 0; j < (MEMORIA_FISICA / TAMANIO_PAGINA); j++) {
 
-        if (memoriaFisica[j].pid == -1 && memoriaFisica[j].page == -1) {
+        if (memoriaFisica[j].pid == -1 && memoriaFisica[j].pagina == -1) {
             printf("- ");
         } else {
-            printf("%d.%d ", memoriaFisica[j].pid, memoriaFisica[j].page);
+            printf("%d.%d ", memoriaFisica[j].pid, memoriaFisica[j].pagina);
         }
     }
     printf("\n");
@@ -184,10 +438,10 @@ int main(int argc, char* argv[])
     printf("Memoria secundaria: ");
     for (j = 0; j < (ALMACENAMIENTO_SECUNDARIO / TAMANIO_PAGINA); j++) {
 
-        if (memoriaSecundaria[j].pid == -1 && memoriaSecundaria[j].page == -1) {
+        if (memoriaSecundaria[j].pid == -1 && memoriaSecundaria[j].pagina == -1) {
             printf("- ");
         } else {
-            printf("%d.%d ", memoriaSecundaria[j].pid, memoriaSecundaria[j].page);
+            printf("%d.%d ", memoriaSecundaria[j].pid, memoriaSecundaria[j].pagina);
         }
     }
     printf("\n");
