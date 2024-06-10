@@ -153,6 +153,11 @@ int main(int argc, char* argv[])
                 }
                         
                 if (procesoPaginaEnRAM == false && procesoPaginaEnDISCO == false && hayLugarEnRAM == false) { 
+                    
+                    if (memoriaSecundaria[indiceDISCO].pid != -1) {
+                        printf("Memoria secundaria llena.\n");
+                        break;
+                    }
 
                     // bajo a disco el proceso pagina de RAM en 'indiceRAM' a la posicion 'indiceDISCO' del disco
                     pagina_t paginaDisco;
@@ -289,6 +294,11 @@ int main(int argc, char* argv[])
                 }
                         
                 if (procesoPaginaEnRAM == false && procesoPaginaEnDISCO == false && hayLugarEnRAM == false) { 
+
+                if (memoriaSecundaria[indiceDISCO].pid != -1) {
+                    printf("Memoria secundaria llena.\n");
+                    break;
+                }
 
                     // busco el proceso y pagina menos recientemente usado
                     min = tiempoRAM[0];
