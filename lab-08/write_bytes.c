@@ -3,17 +3,22 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <time.h>
 
 int main(int argc, char *argv[])
 {
     size_t bufSize, numBytes, thisWrite, totWritten;
     char *buf;
     int sync, fd, openFlags;
+    // clock_t start = clock();
+    // float elapsed_time;
 
     if (argc != 5) {
         fprintf(stderr, "Uso: %s num-bytes buf-size sync archivo\n", argv[0]);
         exit(EXIT_FAILURE);
     }
+
+    // start = clock();
 
     numBytes = atoi(argv[1]);
     bufSize = atoi(argv[2]);
@@ -50,5 +55,12 @@ int main(int argc, char *argv[])
         perror("close");
         exit(EXIT_FAILURE);
     }
+
+    // clock_t end = clock();
+
+    // elapsed_time = ( ((float) (end - start)) / CLOCKS_PER_SEC);
+
+    // printf("El programa tardó %f segundos en ejecutarse.\n", elapsed_time);
+
     exit(EXIT_SUCCESS);
 }
