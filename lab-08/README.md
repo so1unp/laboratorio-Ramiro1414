@@ -76,23 +76,7 @@
     $ 
     ```
 
-## Ejercicio 2: Perfomance de E/S
-
-El programa `test_write.c` crea un archivo y escribe en el mismo la cantidad de bytes indicada. Por ejemplo:
-```console
-$ bin/test_write 16777216 256 0 archivo.txt
-```
-Crea el archivo `archivo.txt` y escribe en el mismo 16777216 bytes (16 MiB) usando un buffer de 256 bytes al invocar la llamada al sistema `write()`.
-
-1. Evaluar los tiempos de ejecución del comando al generar un archivo de 100 MiB usando los siguientes tamaños de buffer: 128, 512, 1024, 8192, 32768. Realizar varias ejecuciones de cada comando para obtener un promedio.
-
-2. Implementar la opción `sync` (tercer parámetro). Si es 0, no se realiza ninguna acción luego de cada `write()`. Si es `1` se debe invocar [`fsync()`](https://man7.org/linux/man-pages/man2/fdatasync.2.html) luego de cada `write()`. Si es `2`, se debe invocar [`fdatasync()`](https://man7.org/linux/man-pages/man2/fdatasync.2.html).
-
-3. Evaluar los tiempos de ejecución usando las opciones `1` y `2`.
-
-4. Presentar una tabla comparativa de los tiempos de ejecución y justificar los resultados.
-
-## Ejercicio 3: Atributos de archivos
+## Ejercicio 2: Atributos de archivos
 
 Completar el programa `fstat.c` para que imprima los siguientes datos del archivo indicado:
 - ID del usuario propietario.
@@ -102,39 +86,21 @@ Completar el programa `fstat.c` para que imprima los siguientes datos del archiv
 - Número de bloques que ocupa en disco.
 - Tiempo de última modificación y acceso (usar la función [`ctime()`](https://www.man7.org/linux/man-pages/man3/ctime.3.html) para dar formato).
 
-## Ejercicio 4: Incrementar el tamaño máximo de un archivo en _xv6_
+## Ejercicio 3: Perfomance de E/S
 
-Un _i-nodo_ en _xv6_ contiene 12 bloques de acceso directo y un bloque de indirección sencilla que agrega 128 bloques adicionales (512 / 4). Como resultado, el máximo número de bloques en disco que puede ocupar un archivo es 140 (12 + 128). Dado que el tamaño de un bloque es igual al de un sector (`BSIZE = 512`), el tamaño máximo de un archivo en _xv6_ es de 71680 bytes (140 sectores en el disco).
+El programa `test_write.c` crea un archivo y escribe en el mismo la cantidad de bytes indicada. Por ejemplo:
+```console
+$ bin/test_write 16777216 256 0 archivo.txt
+```
+Crea el archivo `archivo.txt` y escribe en el mismo 16777216 bytes (16 MiB) usando un buffer de 256 bytes al invocar la llamada al sistema `write()`.
 
-En este ejercicio se incrementará el tamaño máximo de un archivo en _xv6_, agregando soporte en la estructura de _i-nodo_ para un bloque de indirección doble.
+1. Evaluar los tiempos de ejecución del comando al generar un archivo de 25 MiB usando los siguientes tamaños de buffer: 1024, 8192 y 32768. Realizar varias ejecuciones de cada comando para obtener un promedio.
 
-### Preliminares
+2. Implementar la opción `sync` (tercer parámetro). Si es 0, no se realiza ninguna acción luego de cada `write()`. Si es `1` se debe invocar [`fsync()`](https://man7.org/linux/man-pages/man2/fdatasync.2.html) luego de cada `write()`. Si es `2`, se debe invocar [`fdatasync()`](https://man7.org/linux/man-pages/man2/fdatasync.2.html).
 
-1. En el archivo `Makefile` de _xv6_ indicar que simule un solo CPU (`CPU := 1`) y agregar la opción `-snapshot` en la definición de `QEMUOPTS`. Estos cambios mejoran la performance de _xv6_ al generar archivos grandes y utilizar solo una CPU facilita la evaluación.
-2. Modificar `FSSIZE` en el archivo `param.h` para que sea igual a 262144 sectores. Esto incrementa el tamaño de la imagen de disco a 128 Mb (262144 * 512 bytes).
-3. Copiar el archivo `big.c` en el directorio de _xv6_, y agregarlo a la lista `UPROGS` en el `Makefile`. Este programa al ejecutarse crea un nuevo archivo, con un tamaño tal que ocupe un número determinado de sectores en el disco.
-4. Compilar y ejecutar _xv6_. Luego, ejecutar el comando `big` con 200 sectores como parámetro. Debe retornar que sólo 140 sectores fueron escritos, ya que es el máximo tamaño posible del archivo.
+3. Evaluar los tiempos de ejecución usando las opciones `1` y `2`.
 
-### Qué tener en cuenta
-
-El formato de un _i-nodo_ en disco es establecido por la estructura `struct dinode`, definida en el archivo `fs.h`. Prestar atención a `NDIRECT`, `NINDIRECT`, `MAXFILE` y el arreglo `addrs[]`.
-
-La función `bmap()`, en el archivo `fs.c`, permite recuperar los datos de una archivo en el disco. Esta función es invocada tanto en la lectura como la escritura de un archivo. Para este último caso, `bmap()` reserva nuevos bloques según sea necesario.
-
-Notar que `bmap()` maneja dos tipos de números de bloques. El argumento `bn` indica un número lógico de bloque, que es relativo al inicio del archivo. Sin embargo, los números de sectores almacenados en el arreglo `addrs[]` del _i-nodo_ corresponden con números de sectores en el disco, que pueden no ser consecutivos.
-
-### Modificaciones a realizar
-
-Se deben modificar los siguientes archivos:
-
-- `fs.h`: aquí deben modificar la estructura del _i-nodo_. No hay que modificar el tamaño del _i-nodo_, en cambio modificarlo para que sean 11 bloques directos en lugar de 12. De esta manera, el elemento 10 del arreglo `addrs[]` será el bloque indirecto sencillo y el último elemento del arreglo será la dirección del nuevo bloque de indirección doble. 
-- `fs.c`: deben modificar la función `bmap()`, implementando la indirección doble.
-
-### Tips:
-
-- Liberar cada bloque luego de utilizarlo, utilizando la función `brelse()`.
-- Sólo se deben reservar nuevos sectores en disco a medida que sean necesarios.
-- Si el sistema de archivos se corrompe, eliminar el archivo `fs.img`.
+4. Presentar una tabla comparativa de los tiempos de ejecución y justificar los resultados.
 
 ---
 
