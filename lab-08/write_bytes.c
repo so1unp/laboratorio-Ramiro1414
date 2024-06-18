@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 
     // Esta condicion esta presente para evitar el warning que dice que sync no esta siendo usada.
     // Se puede eliminar cuando se implemente fsync() y fdatasync()
-    sync = sync == 1 ? 0 : 1;
+    // sync = sync == 1 ? 0 : 1;
 
     for (totWritten = 0; totWritten < numBytes; totWritten += thisWrite) {
         thisWrite = numBytes - totWritten > bufSize ? bufSize : numBytes - totWritten;
@@ -48,6 +48,12 @@ int main(int argc, char *argv[])
         if (write(fd, buf, thisWrite) != thisWrite) {
             perror("write");
             exit(EXIT_FAILURE);
+        }
+        if (sync == 1) {
+            fsync(fd);
+        }
+        if (sync == 2) {
+            fdatasync(fd);
         }
     }
 
